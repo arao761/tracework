@@ -1,0 +1,25 @@
+node_modules/
+dist/
+data/
+.env
+*.log
+.DS_Store
+
+build/
+release/
+dist-server/
+*.dmg
+*.zip
+
+release-desktop/
+
+# Local credentials and session databases
+.env.*
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.p12
+*.pfx
+*.pem
+*.key
