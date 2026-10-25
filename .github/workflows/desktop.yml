@@ -1,0 +1,60 @@
+name: Desktop builds
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  mac-beta:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run desktop:build
+      - run: npm run desktop:test
+      - run: npx electron-builder --config electron-builder.config.cjs --publish never
+      - run: npm run desktop:verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tracework-macos-beta
+          path: |
+            release/*.dmg
+            release/*.zip
+  mac-signed-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: desktop-release
+    runs-on: macos-14
+    env:
+      TRACEWORK_RELEASE: '1'
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      TRACEWORK_UPDATE_URL: ${{ vars.TRACEWORK_UPDATE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run desktop:build
+      - run: npm run desktop:test
+      - run: npx electron-builder --config electron-builder.config.cjs --publish never
+      - run: npm run desktop:verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tracework-macos-signed
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.yml
+            release/*.blockmap
