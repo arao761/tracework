@@ -1,0 +1,16 @@
+{
+  "sourceId": "sample-claims-setup-001",
+  "title": "Add claim status endpoint",
+  "project": "claims-service",
+  "provider": "Other",
+  "model": "Example agent",
+  "events": [
+    { "kind": "prompt", "timestamp": "2026-10-24T13:00:00Z", "text": "Add a claim status endpoint and run the integration tests." },
+    { "kind": "tool", "timestamp": "2026-10-24T13:01:00Z", "tool": "exec_command", "command": "npm run test:integration", "output": "Error: connect ECONNREFUSED 127.0.0.1:5432\nProcess exited with code 1", "failed": true },
+    { "kind": "tool", "timestamp": "2026-10-24T13:02:00Z", "tool": "exec_command", "command": "npm run test:integration", "output": "Error: connect ECONNREFUSED 127.0.0.1:5432\nProcess exited with code 1", "failed": true },
+    { "kind": "tool", "timestamp": "2026-10-24T13:03:00Z", "tool": "exec_command", "command": "npm run test:integration", "output": "Error: connect ECONNREFUSED 127.0.0.1:5432\nProcess exited with code 1", "failed": true },
+    { "kind": "prompt", "timestamp": "2026-10-24T13:04:00Z", "text": "Check whether the local database is running before retrying." },
+    { "kind": "tool", "timestamp": "2026-10-24T13:05:00Z", "tool": "apply_patch", "command": "Add src/status.ts", "output": "File updated." },
+    { "kind": "response", "timestamp": "2026-10-24T13:06:00Z", "text": "Implemented the endpoint. Integration tests still need the database service." }
+  ]
+}

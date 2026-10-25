@@ -1,0 +1,3 @@
+{"type":"user","sessionId":"example-claude-001","cwd":"/example/agent-console","timestamp":"2026-10-24T15:00:00Z","message":{"role":"user","content":"Improve the review panel layout."}}
+{"type":"assistant","sessionId":"example-claude-001","timestamp":"2026-10-24T15:01:00Z","message":{"model":"example-model","role":"assistant","content":[{"type":"tool_use","id":"tool-1","name":"Edit","input":{"file_path":"src/Review.tsx","old_string":"old","new_string":"new"}}]}}
+{"type":"user","sessionId":"example-claude-001","timestamp":"2026-10-24T15:02:00Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-1","content":"File updated.","is_error":false}]}}
