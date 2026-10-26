@@ -39,6 +39,7 @@ test('sync is opt-in, imports native files, refreshes appended data and preserve
     assert.equal(s.syncSource, 'codex');
     assert.equal(s.engineer, 'Engineer');
     assert.equal(sync.state().connections[0].imported, 1);
+    assert.ok(sync.state().connections[0].diagnostics?.completedAt);
     s.notes = 'Keep this review';
     s.outcome = 'shipped';
     s.engineer = 'Renamed Engineer';
@@ -87,6 +88,7 @@ test('partial final JSONL records are tolerated; deleted sessions do not return'
     await appendFile(path, extra('Must stay deleted'));
     await sync.sync();
     assert.equal(store.workspace(false).sessions.length, 0);
+    assert.ok(sync.state().connections[0].diagnostics?.files.some((f) => /deleted/.test(f.reason)));
   } finally {
     await sync.stop();
     store.close();
@@ -106,6 +108,12 @@ test('history filters, skipped symlinks and missing folders are explicit', async
   try {
     await sync.connect('codex', { history: '7' });
     assert.equal(store.workspace(false).sessions.length, 0);
+    const diagnostics = sync.state().connections[0].diagnostics!;
+    assert.equal(diagnostics.discovered, 1);
+    assert.equal(diagnostics.eligible, 0);
+    assert.equal(diagnostics.skipped, 2);
+    assert.ok(diagnostics.files.some((f) => /history window/.test(f.reason)));
+    assert.ok(diagnostics.files.some((f) => /Symbolic link/.test(f.reason)));
     await assert.rejects(sync.connect('claude', { directory: join(dir, 'missing') }), /not found/);
     await assert.rejects(sync.connect('codex', { directory: 'relative' }), /absolute/);
     await sync.connect('codex', { history: 'all' });
@@ -159,6 +167,17 @@ test('malformed files do not block later batches and warnings persist until corr
     assert.ok(sync.state().connections[0].errors.length > 0);
     await sync.sync();
     assert.ok(sync.state().connections[0].errors.length > 0);
+    const d = sync.state().connections[0].diagnostics!;
+    assert.equal(d.warnings, 21);
+    assert.equal(d.processed, 0);
+    assert.equal(d.unchanged, 22);
+    assert.ok(d.files.some((f) => f.status === 'warning'));
+    const lastSync = sync.state().connections[0].lastSync;
+    await rm(root, { recursive: true });
+    await sync.sync();
+    assert.equal(sync.state().connections[0].diagnostics!.completedAt, null);
+    assert.equal(sync.state().connections[0].lastSync, lastSync);
+    assert.equal(sync.state().connections[0].diagnostics!.warnings, 21);
   } finally {
     await sync.stop();
     store.close();

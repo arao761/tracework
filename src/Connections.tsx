@@ -234,13 +234,9 @@ function ConnectionCard({
   const [engineer, setEngineer] = useState(c.engineer === 'Unassigned' ? '' : c.engineer);
   const [history, setHistory] = useState('7');
   const [error, setError] = useState('');
-  const last = c.lastSync
-    ? new Date(c.lastSync).toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-    : 'Not synced yet';
+  const [fileSearch, setFileSearch] = useState('');
+  const d = c.diagnostics;
+  const last = c.lastSync ? new Date(c.lastSync).toLocaleString() : 'Not synced yet';
   return (
     <section className="card connection-card">
       <div className="connection-card-heading">
@@ -257,7 +253,13 @@ function ConnectionCard({
         </div>
         <span className={`connection-status ${c.enabled ? 'connected' : ''}`}>
           <i />
-          {c.enabled ? 'Connected' : 'Not connected'}
+          {c.enabled
+            ? c.lastError
+              ? 'Needs attention'
+              : c.pending
+                ? 'Indexing'
+                : 'Connected'
+            : 'Not connected'}
         </span>
       </div>
       <form
@@ -351,9 +353,98 @@ function ConnectionCard({
             </p>
           )}
           {c.lastError && <p className="form-error">{c.lastError}</p>}
+          {d && (
+            <section className="sync-diagnostics" aria-label={`${c.name} collection diagnostics`}>
+              <h3>Collection health</h3>
+              <p>
+                Last successful scan:{' '}
+                {c.lastSync ? new Date(c.lastSync).toLocaleString() : 'Not yet completed'}
+              </p>
+              <p>
+                Latest attempt: {new Date(d.attemptedAt).toLocaleString()} ·{' '}
+                {d.completedAt ? 'Completed' : 'Failed; counts may be partial'}
+              </p>
+              <div className="diagnostic-grid">
+                {[
+                  ['JSONL files found', d.discovered],
+                  ['In history window', d.eligible],
+                  ['Files processed this scan', d.processed],
+                  ['Files unchanged', d.unchanged],
+                  ['Entries skipped', d.skipped],
+                  ['Outstanding warnings', d.warnings],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <p>
+                History: files modified{' '}
+                {Date.parse(c.since) === 0
+                  ? 'at any time'
+                  : `since ${new Date(c.since).toLocaleString()}`}
+                . {c.pending} changed files waiting for a later batch.
+              </p>
+              {d.limited && (
+                <p className="form-error">
+                  Directory scan limit reached; choose a narrower session folder. Counts cover only
+                  the visited entries.
+                </p>
+              )}
+              <details>
+                <summary>Why a session may be missing</summary>
+                <p>
+                  Only .jsonl files from this directory and history window are collected. Hidden
+                  entries, symlinks, and nested subagents are excluded. Files over 20 MB are
+                  skipped; incomplete records wait for more content. Previously deleted sessions
+                  stay deleted.
+                </p>
+                <p>
+                  Processed counts are files attempted in the latest scan; synced session totals
+                  above accumulate across scans. Skipped entries can be whole directories.
+                </p>
+                <ul>
+                  {Object.entries(d.reasons).map(([label, count]) => (
+                    <li key={label}>
+                      {label}: {count}
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Up to 100 sampled file and directory results; warnings are prioritized. Unvisited
+                  files will not appear in this sample.
+                </p>
+                <label>
+                  Filter sampled paths
+                  <input
+                    value={fileSearch}
+                    onChange={(e) => setFileSearch(e.target.value)}
+                    placeholder="Session filename or folder"
+                  />
+                </label>
+                <div className="diagnostic-files">
+                  {d.files
+                    .filter((f) => f.path.toLowerCase().includes(fileSearch.toLowerCase()))
+                    .map((f, i) => (
+                      <div key={`${f.path}-${i}`}>
+                        <code>{f.path}</code>
+                        <span>
+                          {f.status} · {f.reason}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+                <p>
+                  If the file is outside this sample, narrow the connected folder, broaden the
+                  history window, or import that session manually.
+                </p>
+              </details>
+            </section>
+          )}
           {c.errors.length > 0 && (
             <details className="sync-errors">
-              <summary>{c.errors.length} file warnings</summary>
+              <summary>{d?.warnings || c.errors.length} warnings · showing up to 10</summary>
               {c.errors.map((v, i) => (
                 <p key={i}>{v}</p>
               ))}
@@ -364,7 +455,7 @@ function ConnectionCard({
         <div className="connection-card-footer">
           <span>
             {c.enabled ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}{' '}
-            {c.lastSync ? `Last checked ${last}` : last}
+            {c.lastSync ? `Last successful scan ${last}` : last}
           </span>
           {c.enabled ? (
             <button
