@@ -6,7 +6,7 @@ A local app for reviewing coding-agent sessions, recording outcomes, and finding
 
 ## Desktop app (recommended)
 
-Tracework now has an Electron desktop application for Apple Silicon Macs running macOS 13.5 or later. The macOS Apple Silicon installer is built locally in `release-desktop/Tracework-0.3.0-mac-arm64.dmg`; normal builds default to `release/`.
+Tracework now has an Electron desktop application for Apple Silicon Macs running macOS 13.5 or later. The macOS Apple Silicon installer is built locally in `release-desktop/Tracework-0.4.0-mac-arm64.dmg`; normal builds default to `release/`.
 
 Open the DMG and drag **Tracework** to Applications. The application bundles its own Node runtime and backend; users do not need Node, npm, a terminal, or a repository checkout. This local beta is ad-hoc signed and **not Apple-notarized**. Trusted public distribution requires the signing/notarization and update-feed setup described in `DESKTOP-RELEASE.md`.
 
@@ -178,4 +178,18 @@ npm run format  # format the source
 
 This version works without an LLM: rules remain explainable, cheap and reproducible. It monitors session-file changes only for explicitly enabled connections, while the app runs. It does not track keystrokes or IDE activity, integrate GitHub, measure model cost, or infer employee productivity. A useful next experiment is to ask engineers which findings lead to actual repository improvements and measure that follow-through before adding more analytics.
 
+## Review fixes and follow up
 
+In **Opportunities**, open **Review proposed fix**. Tracework groups supporting sessions by project, command, and failure signature, then drafts an instruction section for `AGENTS.md` (Codex/other) or `CLAUDE.md` (Claude Code). Inspect the linked evidence and edit the proposal before accepting. Copy or download the reviewed snippet and append it to the repository instructions in your editor; Tracework does not execute session commands or write repository files.
+
+Acceptance saves the proposal, source finding, supporting sessions, and observation start time. **Accepted** shows how many later sessions in that project contain the same pattern. For failed commands, even one matching later failure counts. Retry comparisons use the normalized command and failure signature; setup comparisons also distinguish service endpoints or missing module names when present. If a finding contains multiple different prerequisites, tracking follows its first observed cause. Context and verification follow-up use the original rule thresholds.
+
+After actually making the repository change, check the confirmation box and choose **Mark applied**. This starts a new observation window. Existing sessions, later imports with old start times, undated sessions, and sessions without tools are excluded from the observation denominator. Matching sessions link to their evidence. Results are observations rather than proof of impact or estimates of time saved. Comparison uses the stored project label; projects with identical labels should be distinguished during import.
+
+Accepted findings remain available when the source session updates and no longer triggers the original rule. Deleting that source session deletes its saved proposal and decision. Older accepted decisions have no invented timestamps: choose **Start follow-up tracking** to begin collecting observations now.
+
+## Collection diagnostics
+
+**Connections → Collection health** shows the last successful scan, latest attempt, JSONL files found, files inside the history window, files processed this scan, unchanged files, skipped entries, warnings, and queued files. A completed scan can still contain individual file warnings. A failed directory scan preserves the last successful timestamp and previous warnings.
+
+Expand **Why a session may be missing** for exclusion counts and up to 100 sampled file/directory results, with warnings prioritized and a path filter. Reasons include history limits, unsupported files, hidden entries, symlinks, nested subagent directories, incomplete JSONL, metadata-only logs, size limits, parsing errors, and deletion suppression. Counts are per scan, while imported sessions and session refresh totals accumulate. Skipped directories count as entries, not an estimate of the files inside them. Unchanged warning/excluded files retain their explanation across polls and restarts. A bounded directory scan reports partial coverage and never assumes unvisited files disappeared.

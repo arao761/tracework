@@ -2,13 +2,13 @@
 
 ## Current deliverable
 
-Tracework 0.3.0 is a self-contained macOS Apple Silicon (ARM64) desktop beta requiring macOS 13.5 or later. It was built on macOS, with Electron 45.0.0 and a checksum-verified official Node 24.22.1 runtime. The app bundle has an ad-hoc signature for local integrity. It does **not** have a Developer ID signature or Apple notarization. No distribution identity was available in the local keychain.
+Tracework 0.4.0 is a self-contained macOS Apple Silicon (ARM64) desktop beta requiring macOS 13.5 or later. It was built on macOS, with Electron 45.0.0 and a checksum-verified official Node 24.22.1 runtime. The app bundle has an ad-hoc signature for local integrity. It does **not** have a Developer ID signature or Apple notarization. No distribution identity was available in the local keychain.
 
 A local beta is suitable for evaluating the implementation. This is not a claim that it will pass Gatekeeper as a publicly downloaded application. Do not disable OS security protections to distribute it; produce a properly signed/notarized release using your Apple Developer credentials.
 
 ## Install and use
 
-1. Open `Tracework-0.3.0-mac-arm64.dmg` and drag Tracework to Applications.
+1. Open `Tracework-0.4.0-mac-arm64.dmg` and drag Tracework to Applications.
 2. Launch Tracework and use the demo, or explicitly connect the desired session directories.
 3. In Connections, optionally enable launch at login, choose close-window behavior, and copy the MCP setup command for the coding tool you use.
 4. Keep the app running while collecting or using MCP. Quit stops the service.
@@ -28,7 +28,7 @@ Browser-development data lives in `data/` under the project directory and can be
 - Private runtime discovery: `runtime.json`, file permissions 0600, carrying a read-only MCP credential and current loopback address. No credential is placed in the UI URL.
 - Stable MCP launcher: `bin/tracework-mcp`, regenerated when the app launches from a new installation location.
 - Local diagnostic logs: `logs/desktop.log`, with bounded rotation. No telemetry service.
-- Schema version: SQLite `user_version=1`. Newer unsupported database versions are rejected instead of overwritten.
+- Schema version: SQLite `user_version=2`. Version 1 workspaces migrate automatically while preserving sessions and decisions. Newer unsupported database versions are rejected instead of overwritten.
 - Close window: hides to the menu bar by default. Explicit Quit terminates the service. Optional launch at login is off until enabled.
 
 ## Build locally
