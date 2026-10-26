@@ -3,6 +3,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Store } from './store';
 import { parseImport, redact } from './import';
 import { findings } from '../shared/analysis';
+import { findingSignature, proposeFix } from '../shared/improvements';
 import type { Connections } from './connections';
 export function createApp(
   store: Store,
@@ -136,16 +137,58 @@ export function createApp(
   });
   app.post('/api/decisions', (req, res) => {
     const { id, status } = req.body || {};
-    if (
-      typeof id !== 'string' ||
-      !['accepted', 'dismissed'].includes(status) ||
-      !store
-        .workspace(demo(req))
-        .sessions.flatMap(findings)
-        .some((f) => f.id === id)
-    )
+    const workspace = store.workspace(demo(req));
+    const existing = typeof id === 'string' ? workspace.improvements?.[id] : undefined;
+    const finding =
+      workspace.sessions.flatMap(findings).find((f) => f.id === id) || existing?.finding;
+    if (typeof id !== 'string' || !['accepted', 'dismissed'].includes(status) || !finding)
       return res.status(400).json({ error: 'Invalid recommendation decision.' });
+    if (status === 'accepted' && !existing) {
+      const origin = workspace.sessions.find((s) => s.id === finding.sessionId)!;
+      const proposal = proposeFix(finding, workspace.sessions);
+      const content = req.body?.proposalContent;
+      if (
+        content !== undefined &&
+        (typeof content !== 'string' || !content.trim() || content.length > 6000)
+      )
+        return res
+          .status(400)
+          .json({ error: 'Enter a repository instruction of up to 6000 characters.' });
+      if (content !== undefined) proposal.content = redact(content);
+      store.saveImprovement(
+        {
+          id,
+          finding,
+          signature: findingSignature(finding, origin),
+          proposal,
+          acceptedAt: new Date().toISOString(),
+          appliedAt: null,
+          baselineSessionIds: workspace.sessions
+            .filter((s) => s.project === finding.project)
+            .map((s) => s.id),
+        },
+        demo(req),
+      );
+    }
     store.decide(id, demo(req), status);
+    res.json({ ok: true });
+  });
+  app.post('/api/improvements/applied', (req, res) => {
+    const { id, confirmed } = req.body || {};
+    const workspace = store.workspace(demo(req));
+    const improvement = typeof id === 'string' ? workspace.improvements?.[id] : undefined;
+    if (!improvement || workspace.decisions[id] !== 'accepted' || confirmed !== true)
+      return res
+        .status(400)
+        .json({ error: 'Accept the proposal and confirm you applied the change first.' });
+    // Idempotent: repeated clicks must not move the observation window.
+    if (!improvement.appliedAt) {
+      improvement.appliedAt = new Date().toISOString();
+      improvement.baselineSessionIds = workspace.sessions
+        .filter((s) => s.project === improvement.finding.project)
+        .map((s) => s.id);
+      store.saveImprovement(improvement, demo(req));
+    }
     res.json({ ok: true });
   });
   app.post('/api/work', (req, res) => {

@@ -3274,3 +3274,123 @@ textarea::placeholder {
     width: 26px;
   }
 }
+
+/* Reviewed fixes and collection diagnostics */
+.fix-review {
+  margin-top: 16px;
+}
+.fix-review details > summary,
+.sync-diagnostics summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.fix-review textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font:
+    12px/1.7 ui-monospace,
+    monospace;
+  resize: vertical;
+  min-height: 130px;
+}
+.fix-review label {
+  display: grid;
+  gap: 8px;
+}
+.fix-review .fix-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.fix-review .muted,
+.sync-diagnostics p {
+  color: var(--text-secondary, #626c7c);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.fix-sources {
+  padding-left: 18px;
+}
+.fix-followup {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #dce5ed;
+  border-radius: 9px;
+  background: #f8fafc;
+}
+.fix-followup h3,
+.sync-diagnostics h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.fix-followup strong {
+  font-size: 14px;
+}
+.fix-followup p {
+  margin: 8px 0;
+}
+.apply-confirmation {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+.apply-confirmation label {
+  display: flex;
+  align-items: flex-start;
+  font-size: 12px;
+}
+.apply-confirmation input {
+  width: auto;
+  margin-top: 3px;
+}
+.sync-diagnostics {
+  border-top: 1px solid #e5eaf0;
+  margin-top: 18px;
+  padding-top: 18px;
+}
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.diagnostic-grid > div {
+  display: grid;
+  gap: 5px;
+  background: #f6f8fa;
+  padding: 10px;
+  border-radius: 6px;
+}
+.diagnostic-grid span {
+  font-size: 11px;
+  color: #626c7c;
+}
+.diagnostic-grid strong {
+  font-size: 18px;
+}
+.sync-diagnostics ul {
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.diagnostic-files {
+  max-height: 300px;
+  overflow: auto;
+  margin-top: 12px;
+}
+.diagnostic-files > div {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5eaf0;
+}
+.diagnostic-files code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.diagnostic-files span {
+  font-size: 11px;
+  color: #626c7c;
+}

@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Session, WorkEntry, Decision, Workspace } from '../shared/model';
+import type { Session, WorkEntry, Decision, Workspace, Improvement } from '../shared/model';
 import { demoSessions, demoWork } from './demo';
 export class Store {
   db: DatabaseSync;
@@ -10,7 +10,7 @@ export class Store {
     this.db = new DatabaseSync(path);
     const version = (this.db.prepare('PRAGMA user_version').get() as { user_version: number })
       .user_version;
-    if (version > 1) {
+    if (version > 2) {
       this.db.close();
       throw new Error('This database requires a newer version of Tracework.');
     }
@@ -22,7 +22,9 @@ export class Store {
     this.db.exec(
       `CREATE TABLE IF NOT EXISTS sync_files (connection TEXT NOT NULL, path TEXT NOT NULL, signature TEXT NOT NULL, PRIMARY KEY(connection,path)); CREATE TABLE IF NOT EXISTS sync_deleted (id TEXT PRIMARY KEY);`,
     );
-    this.db.exec('PRAGMA user_version=1;');
+    this.db.exec(
+      'CREATE TABLE IF NOT EXISTS improvements (id TEXT NOT NULL, demo INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(id,demo)); PRAGMA user_version=2;',
+    );
     if (!this.db.prepare('SELECT value FROM meta WHERE key=?').get('seeded')) {
       for (const s of demoSessions()) this.insert(s);
       for (const w of demoWork()) this.addWork(w, true);
@@ -54,6 +56,9 @@ export class Store {
     if (!demo) this.db.prepare('INSERT OR IGNORE INTO sync_deleted VALUES (?)').run(id);
     this.db.prepare('DELETE FROM sessions WHERE id=? AND demo=?').run(id, demo ? 1 : 0);
     this.db
+      .prepare('DELETE FROM improvements WHERE id LIKE ? AND demo=?')
+      .run(`${id}:%`, demo ? 1 : 0);
+    this.db
       .prepare('DELETE FROM decisions WHERE id LIKE ? AND demo=?')
       .run(`${id}:%`, demo ? 1 : 0);
   }
@@ -74,7 +79,20 @@ export class Store {
         }[]
       ).map((r) => [r.id, r.status]),
     );
-    return { sessions, work, decisions };
+    const improvements = Object.fromEntries(
+      (
+        this.db.prepare('SELECT id,body FROM improvements WHERE demo=?').all(demo ? 1 : 0) as {
+          id: string;
+          body: string;
+        }[]
+      ).map((r) => [r.id, JSON.parse(r.body)]),
+    );
+    return { sessions, work, decisions, improvements };
+  }
+  saveImprovement(value: Improvement, demo: boolean) {
+    this.db
+      .prepare('INSERT OR REPLACE INTO improvements VALUES (?,?,?)')
+      .run(value.id, demo ? 1 : 0, JSON.stringify(value));
   }
   decide(id: string, demo: boolean, status: Decision) {
     this.db

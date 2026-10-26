@@ -37,6 +37,8 @@ import type {
   Session,
   Workspace,
   Finding,
+  FixProposal,
+  Improvement,
   Outcome,
   Decision,
   Event as SessionEvent,
@@ -44,6 +46,8 @@ import type {
 import { outcomeLabels } from '../shared/model';
 import { aggregate, findings, metrics } from '../shared/analysis';
 import ConnectionsPage from './Connections';
+import FixReview from './FixReview';
+import { proposeFix } from '../shared/improvements';
 
 type Page = 'overview' | 'sessions' | 'insights' | 'work' | 'connections';
 const pageNames: Record<Page, string> = {
@@ -196,7 +200,17 @@ export default function App() {
     [data.sessions, range, engineer, project, provider, outcome, search, sort],
   );
   const stats = aggregate(filtered);
-  const allFindings = filtered.flatMap(findings);
+  const currentFindings = filtered.flatMap(findings);
+  const allFindings = [
+    ...currentFindings,
+    ...Object.values(data.improvements || {})
+      .filter(
+        (i) =>
+          filtered.some((s) => s.id === i.finding.sessionId) &&
+          !currentFindings.some((f) => f.id === i.id),
+      )
+      .map((i) => i.finding),
+  ];
   const openFindings = allFindings.filter((f) => !data.decisions[f.id]);
   const session = data.sessions.find((s) => s.id === selected);
   const members = [
@@ -234,9 +248,9 @@ export default function App() {
       setBusy(false);
     }
   }
-  async function decide(f: Finding, status: Decision) {
+  async function decide(f: Finding, status: Decision, proposalContent?: string) {
     try {
-      await mutate('/decisions', 'POST', { id: f.id, status });
+      await mutate('/decisions', 'POST', { id: f.id, status, proposalContent });
       setToast(
         status === 'accepted' ? 'Added to your improvement backlog.' : 'Recommendation dismissed.',
       );
@@ -400,6 +414,9 @@ export default function App() {
                         'Observed activity is a capped event-gap estimate, not hours worked. Outcomes are human reported.',
                       sessions: filtered,
                       findings: allFindings,
+                      improvements: Object.values(data.improvements || {}).filter((i) =>
+                        filtered.some((s) => s.id === i.finding.sessionId),
+                      ),
                       decisions: Object.fromEntries(
                         allFindings
                           .filter((f) => data.decisions[f.id])
@@ -792,20 +809,23 @@ export default function App() {
                           session={data.sessions.find((s) => s.id === f.sessionId)!}
                           decision={data.decisions[f.id]}
                           onEvidence={() => openEvidence(f)}
-                          onDecide={(v) => decide(f, v)}
-                          disabled={busy}
-                          onCopy={async () => {
-                            try {
-                              if (window.traceworkDesktop)
-                                await window.traceworkDesktop.copyText(f.instruction);
-                              else await navigator.clipboard.writeText(f.instruction);
-                              setToast('Suggested repository instruction copied.');
-                            } catch {
-                              setToast(
-                                'Clipboard unavailable. Select the instruction text to copy.',
-                              );
-                            }
+                          onDecide={(v, content) => decide(f, v, content)}
+                          proposal={
+                            data.improvements?.[f.id]?.proposal || proposeFix(f, data.sessions)
+                          }
+                          improvement={data.improvements?.[f.id]}
+                          sessions={data.sessions}
+                          onApply={async () => {
+                            await mutate('/improvements/applied', 'POST', {
+                              id: f.id,
+                              confirmed: true,
+                            });
                           }}
+                          onSource={(sessionId, eventId) => {
+                            setSelected(sessionId);
+                            setEvidence(eventId);
+                          }}
+                          disabled={busy}
                         />
                       ))}
                     {!allFindings.filter(
@@ -1365,15 +1385,23 @@ function FindingCard({
   onEvidence,
   onDecide,
   disabled,
-  onCopy,
+  proposal,
+  improvement,
+  sessions,
+  onApply,
+  onSource,
 }: {
   finding: Finding;
   session: Session;
   decision?: Decision;
   onEvidence: () => void;
-  onDecide: (v: Decision) => void;
+  onDecide: (v: Decision, content?: string) => void;
   disabled: boolean;
-  onCopy: () => void;
+  proposal: FixProposal;
+  improvement?: Improvement;
+  sessions: Session[];
+  onApply: () => Promise<void>;
+  onSource: (sessionId: string, eventId: string) => void;
 }) {
   return (
     <article className="card finding-card">
@@ -1415,13 +1443,16 @@ function FindingCard({
             Suggested next step
           </span>
           <p>{f.action}</p>
-          <details>
-            <summary>Suggested repository instruction</summary>
-            <pre>{f.instruction}</pre>
-            <button className="text-button" onClick={onCopy}>
-              Copy instruction <ArrowUpRight size={13} />
-            </button>
-          </details>
+          <FixReview
+            proposal={proposal}
+            improvement={improvement}
+            sessions={sessions}
+            accepted={decision === 'accepted'}
+            busy={disabled}
+            onAccept={(content) => onDecide('accepted', content)}
+            onApply={onApply}
+            onSource={onSource}
+          />
         </div>
         <div className="finding-actions">
           <button className="text-button" onClick={onEvidence}>
@@ -1434,14 +1465,6 @@ function FindingCard({
               onClick={() => onDecide('dismissed')}
             >
               Dismiss
-            </button>
-            <button
-              className="button small-button primary"
-              disabled={disabled || decision === 'accepted'}
-              onClick={() => onDecide('accepted')}
-            >
-              <Check size={14} />
-              {decision === 'accepted' ? 'Accepted' : 'Accept suggestion'}
             </button>
           </div>
         </div>

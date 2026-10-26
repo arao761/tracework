@@ -9,7 +9,7 @@ async function main() {
   try {
     const version = (db.prepare('PRAGMA user_version').get() as { user_version: number })
       .user_version;
-    if (version > 1) throw new Error('This workspace needs a newer Tracework version.');
+    if (version > 2) throw new Error('This workspace needs a newer Tracework version.');
     db.prepare('SELECT COUNT(*) FROM sessions').get();
     await backup(db, target);
     if (process.platform !== 'win32') await chmod(target, 0o600);

@@ -55,6 +55,7 @@ export type Workspace = {
   sessions: Session[];
   decisions: Record<string, Decision>;
   work: WorkEntry[];
+  improvements?: Record<string, Improvement>;
 };
 export const outcomeLabels: Record<Outcome, string> = {
   unreviewed: 'Unreviewed',
@@ -77,9 +78,44 @@ export type Connection = {
   updated: number;
   pending: number;
   errors: string[];
+  diagnostics?: SyncDiagnostics;
 };
 export type ConnectionsState = {
   connections: Connection[];
   pollSeconds: number;
   mcp: { codex: string; claude: string };
+};
+
+export type FixProposal = {
+  target: 'AGENTS.md' | 'CLAUDE.md';
+  content: string;
+  rationale: string;
+  sources: { sessionId: string; title: string; evidence: string[] }[];
+};
+export type Improvement = {
+  id: string;
+  finding: Finding;
+  signature: string;
+  proposal: FixProposal;
+  acceptedAt: string;
+  appliedAt: string | null;
+  baselineSessionIds: string[];
+};
+export type SyncFileStatus = {
+  path: string;
+  status: 'imported' | 'updated' | 'unchanged' | 'skipped' | 'warning';
+  reason: string;
+};
+export type SyncDiagnostics = {
+  attemptedAt: string;
+  completedAt: string | null;
+  discovered: number;
+  eligible: number;
+  processed: number;
+  unchanged: number;
+  skipped: number;
+  warnings: number;
+  limited: boolean;
+  reasons: Record<string, number>;
+  files: SyncFileStatus[];
 };
